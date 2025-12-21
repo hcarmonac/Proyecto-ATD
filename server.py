@@ -8,7 +8,8 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
-
+from selenium.webdriver.support.ui import Select
+import yfinance as yf
 from tabulate import tabulate
 from socket import *
 import json
@@ -25,11 +26,6 @@ def graficar_cotizacion(ticker):
             A plotly graph showing the stock price evolution over the last year
     
     """
-    
-    # Ensure necessary imports
-    import requests
-    from datetime import date, timedelta
-    import plotly.graph_objects as go
     
     # Variables and API setup
     API_KEY = 'ea51535a06ab42f0824812f815f2eb08' 
@@ -106,9 +102,6 @@ def get_estimations(ticker):
     
     """
     
-    # Ensure necessary imports
-    import requests
-    
     # Financial Modeling Prep (FMP) API key for estimations
     API_KEY = 'm6B6VyNRoaMYJOIxJPWLzD6K9oVopgoe'
     
@@ -173,14 +166,6 @@ def get_information(ticker):
     
     """
     
-    # Ensure necessary imports
-    from selenium import webdriver
-    from selenium.webdriver.common.by import By
-    from selenium.webdriver.common.keys import Keys
-    from selenium.webdriver.support.ui import WebDriverWait
-    from selenium.webdriver.support import expected_conditions as EC
-    import time
-    
     # Initialize the WebDriver and information dictionary
     driver = webdriver.Chrome()
     info = {}
@@ -234,7 +219,157 @@ def get_information(ticker):
     return info
 
 def get_news(ticker):
-    pass
+    """
+    
+    Selenium Web Scraping from elmundo.es for news related to the company represented by the ticker symbol.
+    
+    Parameters:
+        ticker: str - The stock ticker symbol to search for.
+        
+    Returns:
+        List of tuples containing (date, title, link) of relevant news articles.
+    
+    """
+    
+    # Get company name from ticker
+    try:
+        empresa = yf.Ticker(ticker).info['shortName']
+    except:
+        empresa = ticker  # If fails, use ticker as company name
+    
+    # Initialize WebDriver
+    try:
+        driver = webdriver.Chrome()
+        driver.get('https://www.elmundo.es/')
+        driver.maximize_window()
+    
+    except:
+        print("Error initializing WebDriver or accessing elmundo.es")
+    
+    # Handle cookies pop-up
+    try:
+        cookies_button=WebDriverWait(driver, 5).until(
+                    EC.element_to_be_clickable((By.ID, "ue-accept-notice-button"))
+                )
+        cookies_button.click()
+    except:
+        print("Error handling cookies pop-up")
+    
+    # Click search button
+    try:
+        search_button=WebDriverWait(driver, 5).until(
+                    EC.element_to_be_clickable((By.CLASS_NAME, "ue-c-main-header__search-box"))
+                )
+        search_button.click()
+    except:
+        print("Error clicking search button")
+    
+    # Click advanced search
+    try:
+        busqueda_avanzada=WebDriverWait(driver, 5).until(
+                    EC.element_to_be_clickable((By.LINK_TEXT, "búsqueda avanzada »"))
+                )
+        busqueda_avanzada.click()
+    except:
+        print("Error clicking advanced search")
+        
+    # Choose 50 results per page
+    try:
+        WebDriverWait(driver, 5).until(
+                    EC.presence_of_all_elements_located((By.CLASS_NAME, 'consejos'))) # Wait for all options to load
+        desplegables = driver.find_elements(By.CLASS_NAME, 'consejos') # Get all options
+        select = Select(desplegables[2]) # Take the third
+        select.select_by_value("50")
+    except: 
+        print("Error selecting the number of results per page")
+
+    # Choose news from the last year
+    try:
+        WebDriverWait(driver, 5).until(
+                    EC.presence_of_all_elements_located((By.CLASS_NAME, 'consejos')) # Wait for all options to load
+                )
+        select = Select(desplegables[0]) # Take the first
+        select.select_by_value("365")
+    except: 
+        print("Error selecting the number of results per page")
+        
+    # Choose 70% match percentage
+    try:
+        select = Select(desplegables[3]) # Take the fourth
+        select.select_by_value("70")
+    except: 
+        print("Error selecting the match percentage")
+        
+    # Send keys of the company name and submit
+    try:
+        insertar_nombre=WebDriverWait(driver, 5).until(
+                    EC.element_to_be_clickable((By.ID, "q"))
+                )
+        insertar_nombre.send_keys(empresa)
+        insertar_nombre.send_keys(Keys.ENTER)
+    
+    except:
+        print("Error sending keys of the company name")
+        
+    # Click a button to sort news by date
+    try:
+        boton_ordenar_fecha=WebDriverWait(driver, 5).until(
+                    EC.element_to_be_clickable((By.LINK_TEXT, "Ordenar por FECHA"))
+                )
+        boton_ordenar_fecha.click()
+    except:
+        print("Error with the button to sort by date")
+
+    # Click on economy to only show economic news
+    try:
+        boton_economia=WebDriverWait(driver, 5).until(
+                    EC.element_to_be_clickable((By.LINK_TEXT, "Economía"))
+                )
+        boton_economia.click()
+    except:
+        print("Error with the button for economic news")
+    
+    lista=[]
+    # Collect data from each page and then click on the next page button if it exists; if it doesn't exist, break the loop
+    while True:
+        try:
+            WebDriverWait(driver, 5).until(
+                EC.presence_of_all_elements_located((By.TAG_NAME, "li"))) # Wait for all li elements to load
+            
+            todos_los_li = driver.find_elements(By.TAG_NAME, "li")
+        
+            # We only save the news that have the company name in their text (title or subtitle)
+        except:
+            print("Error getting the li elements of the news")
+        
+    # Filter important news and save dates (coherence 80% or more)
+        try:
+            for i in todos_los_li:
+                if empresa.lower() in i.text.lower():
+                    elemento_a = i.find_element(By.TAG_NAME, 'a')
+                    titulo = elemento_a.text
+                    enlace = elemento_a.get_attribute('href')
+                    fecha = i.find_element(By.CLASS_NAME, 'fecha').text
+                    lista.append((fecha, titulo, enlace))
+        except:
+            print("Error filtering that the company name is in the title or subtitle and saving it")
+            
+    # Go to the next page    
+        try:
+            boton_siguiente_pag=WebDriverWait(driver, 2).until(
+                        EC.element_to_be_clickable((By.LINK_TEXT, "Siguiente »"))
+            )
+            
+            boton_siguiente_pag.click()
+        except:
+            break
+    
+    # Close the driver
+    time.sleep(1)
+    driver.quit()
+    
+    # Return the list of news
+    return lista
 
 def generate_financial_summary(raw_data):
     """
@@ -247,9 +382,6 @@ def generate_financial_summary(raw_data):
             String containing a formatted table with filtered metrics, their values, and economic interpretations.
     
     """
-    
-    # Ensure necessary imports
-    from tabulate import tabulate
     
     # Definition of metrics to filter and their explanations
     # Format: 'Original_Key': ('Readable_Name', 'Description/Importance')
@@ -291,16 +423,15 @@ def main():
     
     """
     
-    # Ensure necessary imports
-    from socket import socket
-    import json
-    
     # Server setup
     socket_server = socket(AF_INET, SOCK_STREAM)
-    socket_server.bind(('', 10000))
+    
+    IP_ADDRESS = gethostbyname(gethostname())
+    PORT = 10000
+    socket_server.bind(('0.0.0.0', PORT))
     socket_server.listen()
     
-    print("Server is listening for connections...")
+    print(f"Server is listening for connections at IP {IP_ADDRESS} and port {PORT}...")
     
     # Wait for client connection
     (socket_connection, address) = socket_server.accept()
@@ -339,6 +470,7 @@ def main():
         socket_connection.close()
         print("Connection closed.")
         break
+    
     # Close the server socket
     socket_server.close()
     print("Server shut down.")
