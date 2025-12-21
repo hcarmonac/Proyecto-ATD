@@ -454,7 +454,7 @@ def main():
         
         # Make the response
         response = {
-            'graph': graph,
+            'graph': graph.to_json(),
             'summary_table': summary_table,
             'news': news
         }
