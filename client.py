@@ -2,6 +2,7 @@
 from socket import *
 import json
 import yfinance as yf
+import plotly.io as pio
 
 def main():
     """
@@ -50,15 +51,27 @@ def main():
             print(f"Request sent for ticker: {ticker}")
             
             # Receive the response from the server
-            response = client_socket.recv(4096).decode()
+            response = client_socket.recv(100000).decode()
             
             print("Received data from server")
             
-            # Parse the JSON response
-            data = json.loads(response)
+            if response:
+                try:
+                    # Parse the JSON response
+                    data = json.loads(response)
+                    # Reconstruct the Plotly figure from JSON
+                    fig = pio.from_json(data["graph"])
+                
+                except json.JSONDecodeError:
+                    print("Error decoding JSON response from server.")
+                    continue
+            
+            else:
+                print("No response received from server.")
+                continue
             
             # Display the received data
-            data["graph"].show()
+            fig.show()
             print("Summary Table:")
             print(data["summary_table"])
             print("News:")
@@ -70,3 +83,6 @@ def main():
     
     # Close the socket
     client_socket.close()
+
+if __name__ == "__main__":
+    main()

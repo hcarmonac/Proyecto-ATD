@@ -51,10 +51,10 @@ def graficar_cotizacion(ticker):
         
         # Extract dates and prices
         dates, prices = [], []
-        for date in values:
-            dates.append(date['datetime'])
-            prices.append(float(date['close']))
-
+        for day in values:
+            dates.append(day['datetime'])
+            prices.append(float(day['close']))
+    
         # Representation with Plotly
         fig = go.Figure()
 
