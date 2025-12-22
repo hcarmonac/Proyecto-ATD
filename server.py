@@ -179,6 +179,12 @@ def get_information(ticker):
         
         # Handle cookie consent pop-up
         time.sleep(1)  # Wait for the pop-up to appear
+
+        # LLUC CAMBIOS INICIO
+        leer_mas = driver.find_element(By.CSS_SELECTOR, ".Button__StyledButton-buoy__sc-a1qza5-0.elJono")
+        if leer_mas:
+            leer_mas.click()
+        # LLUC CAMBIOS FIN    
         cookie_reject_button = driver.find_element(By.CLASS_NAME, "Button__StyledButton-buoy__sc-a1qza5-0")
         cookie_reject_button.click()
         
