@@ -1,7 +1,6 @@
 # Necessary imports
 import requests
 from datetime import date, timedelta
-import plotly.graph_objects as go
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -14,16 +13,16 @@ from tabulate import tabulate
 from socket import *
 import json
 
-def graficar_cotizacion(ticker):
+def get_quotes(ticker):
     """
     
-        Makes a plotly graph of the stock price evolution for a given ticker over the last year
+        Gets the stock price evolution for a given ticker over the last year
 
         Parameters:
             ticker (str): Stock ticker symbol
         
         Returns:
-            A plotly graph showing the stock price evolution over the last year
+           Dictionary with the pairs {date: price} of the ticker given over the last year
     
     """
     
@@ -50,41 +49,12 @@ def graficar_cotizacion(ticker):
         values = data['values']
         
         # Extract dates and prices
-        dates, prices = [], []
+        quotes = {}
         for day in values:
-            dates.append(day['datetime'])
-            prices.append(float(day['close']))
-    
-        # Representation with Plotly
-        fig = go.Figure()
+            quotes[day['datetime']] = float(day['close'])
 
-        fig.add_trace(go.Scatter(
-            x = dates, 
-            y = prices,
-            mode = 'lines',
-            name = ticker.upper(),
-            line = dict(color = 'royalblue', width = 2),
-            hovertemplate = '<b>Precio:</b> $%{y:.2f}<extra></extra>'
-            )
-        )
-
-        title = f'{ticker.upper()} price evolution over the last year'
-
-        fig.update_layout(
-            title = title,
-            xaxis_title = 'Date',
-            yaxis_title = 'Closing Price ($)',
-            hovermode = 'x unified', 
-            template = 'plotly_white',
-            hoverlabel = dict(
-                bgcolor = 'white',
-                font_size = 13,
-                font_family = 'Arial'
-            )
-        )
-
-        # Return the figure
-        return fig
+        # Return the dict
+        return quotes
     
     except requests.exceptions.RequestException as e:
         print(f"Error fetching data: {e}")
@@ -419,7 +389,7 @@ def main():
     """
     
     Main server function to receive the ticker symbol from the client,
-    fetch financial data, generate a summary (graphical and textual report), and send it back to the client.
+    fetch financial data, and send it back to the client.
     
     """
     
@@ -431,7 +401,7 @@ def main():
     socket_server.bind(('0.0.0.0', PORT))
     socket_server.listen()
     
-    print(f"Server is listening for connections at IP {IP_ADDRESS} and port {PORT}...")
+    print(f"Server is listening for connections at IP {IP_ADDRESS} and port {PORT} ...")
     
     # Wait for client connection
     (socket_connection, address) = socket_server.accept()
@@ -441,12 +411,12 @@ def main():
     # Main loop to handle client requests
     while True:
         # Receive data from the client
-        ticker = socket_connection.recv(4096).decode().strip()
+        ticker = socket_connection.recv(4096).decode()
         
         print(f"Received ticker symbol: {ticker}")
         
         # Fetch data and generate summary
-        graph = graficar_cotizacion(ticker)
+        quotes = get_quotes(ticker)
         estimations, information = get_estimations(ticker), get_information(ticker)
         combined_data = {**estimations, **information}
         summary_table = generate_financial_summary(combined_data)
@@ -454,7 +424,7 @@ def main():
         
         # Make the response
         response = {
-            'graph': graph.to_json(),
+            'quotes': quotes,
             'summary_table': summary_table,
             'news': news
         }
