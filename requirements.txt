@@ -1,0 +1,11 @@
+datetime
+json
+plotly
+re
+requests
+selenium
+socket
+tabulate
+time
+webbrowser
+yfinance
