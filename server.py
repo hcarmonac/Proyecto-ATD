@@ -212,11 +212,25 @@ def get_news(ticker):
         List of tuples containing (date, title, link) of relevant news articles.
     
     """
-    
+    # This function cleans company names by removing initial articles and legal suffixes (like "Inc." or "S.A.") using regular expressions to extract only the commercial brand name
+    def filtrar(nombre):
+        #Remove 'the' if it starts in the company name
+        if nombre.lower().startswith("the "):
+            nombre = nombre[4:]
+        
+        # Specify separations with legal sufixes and other
+        patron_sufijos = r',|\bInc\b|\bCorp\b|\bS\.A\b|\bCorporation\b|\bAG\b|\bN\.V\b|\bSE\b|& Co|\bPLC\b|\bLtd\b|\.com\b|\bPlatforms\b|\bGroup\b|\bMotor\b|\bHoldings\b|\bIncorporated\b|\bCompany\b'    
+
+        #Separe the company name with the sufixes
+        partes = re.split(patron_sufijos, nombre, flags=re.IGNORECASE)
+        
+        resultado = partes[0].strip()
+        return resultado
+        
     # Get company name from ticker
     try:
         empresa = yf.Ticker(ticker).info['shortName']
-        empresa = re.search(r'\w+', empresa).group(0)  # Take only the first word of the company name
+        empresa = filtrar(empresa)
     except:
         empresa = ticker  # If fails, use ticker as company name
     
