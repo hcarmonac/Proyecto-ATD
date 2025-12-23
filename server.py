@@ -9,21 +9,23 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
 from selenium.webdriver.support.ui import Select
+from selenium.webdriver.chrome.options import Options
 import yfinance as yf
 from tabulate import tabulate
 from socket import *
 import json
+import re
 
-def graficar_cotizacion(ticker):
+def get_graph_data(ticker):
     """
     
-        Makes a plotly graph of the stock price evolution for a given ticker over the last year
+        Obtains the data of the stock price evolution for a given ticker over the last year
 
         Parameters:
             ticker (str): Stock ticker symbol
         
         Returns:
-            A plotly graph showing the stock price evolution over the last year
+            A dictionary containing the data for making the plot with Plotly {dates: [], prices: []}
     
     """
     
@@ -54,42 +56,13 @@ def graficar_cotizacion(ticker):
         for day in values:
             dates.append(day['datetime'])
             prices.append(float(day['close']))
-    
-        # Representation with Plotly
-        fig = go.Figure()
+        
+        return {'ticker': ticker, 'dates': dates, 'prices': prices}
 
-        fig.add_trace(go.Scatter(
-            x = dates, 
-            y = prices,
-            mode = 'lines',
-            name = ticker.upper(),
-            line = dict(color = 'royalblue', width = 2),
-            hovertemplate = '<b>Precio:</b> $%{y:.2f}<extra></extra>'
-            )
-        )
-
-        title = f'{ticker.upper()} price evolution over the last year'
-
-        fig.update_layout(
-            title = title,
-            xaxis_title = 'Date',
-            yaxis_title = 'Closing Price ($)',
-            hovermode = 'x unified', 
-            template = 'plotly_white',
-            hoverlabel = dict(
-                bgcolor = 'white',
-                font_size = 13,
-                font_family = 'Arial'
-            )
-        )
-
-        # Return the figure
-        return fig
-    
     except requests.exceptions.RequestException as e:
         print(f"Error fetching data: {e}")
         return None
-
+    
 def get_estimations(ticker):
     """
     
@@ -165,9 +138,13 @@ def get_information(ticker):
             Dictionary with the extracted information (key-value pairs including metrics like P/E ratio, market cap, etc.)
     
     """
+    # Hide warnings from Selenium
+    options = Options()
+    options.add_argument('--log-level=3')
+    options.add_experimental_option('excludeSwitches', ['enable-logging'])
     
     # Initialize the WebDriver and information dictionary
-    driver = webdriver.Chrome()
+    driver = webdriver.Chrome(options=options)
     info = {}
     
     # Full screen the window
@@ -180,11 +157,10 @@ def get_information(ticker):
         # Handle cookie consent pop-up
         time.sleep(1)  # Wait for the pop-up to appear
 
-        # LLUC CAMBIOS INICIO
-        leer_mas = driver.find_element(By.CSS_SELECTOR, ".Button__StyledButton-buoy__sc-a1qza5-0.elJono")
+        """leer_mas = driver.find_element(By.CSS_SELECTOR, ".Button__StyledButton-buoy__sc-a1qza5-0.elJono")
         if leer_mas:
-            leer_mas.click()
-        # LLUC CAMBIOS FIN    
+            leer_mas.click()"""
+
         cookie_reject_button = driver.find_element(By.CLASS_NAME, "Button__StyledButton-buoy__sc-a1qza5-0")
         cookie_reject_button.click()
         
@@ -240,12 +216,19 @@ def get_news(ticker):
     # Get company name from ticker
     try:
         empresa = yf.Ticker(ticker).info['shortName']
+        empresa = re.search(r'\w+', empresa).group(0)  # Take only the first word of the company name
     except:
         empresa = ticker  # If fails, use ticker as company name
     
+    # Hide warnings from Selenium
+    options = Options()
+    options.add_argument('--log-level=3')
+    options.add_experimental_option('excludeSwitches', ['enable-logging'])
+    
+    
     # Initialize WebDriver
     try:
-        driver = webdriver.Chrome()
+        driver = webdriver.Chrome(options=options)
         driver.get('https://www.elmundo.es/')
         driver.maximize_window()
     
@@ -439,44 +422,51 @@ def main():
     
     print(f"Server is listening for connections at IP {IP_ADDRESS} and port {PORT}...")
     
-    # Wait for client connection
-    (socket_connection, address) = socket_server.accept()
-    
-    print(f"Connection established with {address}")
-    
-    # Main loop to handle client requests
+    # To be able to have multiple clients, this part should be in a loop:
     while True:
-        # Receive data from the client
-        ticker = socket_connection.recv(4096).decode().strip()
+        # Wait for client connection
+        (socket_connection, address) = socket_server.accept()
         
-        print(f"Received ticker symbol: {ticker}")
+        print(f"Connection established with {address}")
         
-        # Fetch data and generate summary
-        graph = graficar_cotizacion(ticker)
-        estimations, information = get_estimations(ticker), get_information(ticker)
-        combined_data = {**estimations, **information}
-        summary_table = generate_financial_summary(combined_data)
-        news = get_news(ticker)
-        
-        # Make the response
-        response = {
-            'graph': graph.to_json(),
-            'summary_table': summary_table,
-            'news': news
-        }
-        
-        print("Data fetched and summary generated.")
-        
-        # Send the graph and summary back to the client
-        socket_connection.send(json.dumps(response).encode())
-        
-        print("Response sent to the client.")
+        # Main loop to handle client requests
+        while True:
+            # Receive data from the client
+            ticker = socket_connection.recv(4096).decode().strip()
+            
+            if ticker == 'EXIT':
+                print("Exit command received. Shutting down the server.")
+                break
+            
+            print(f"Received ticker symbol: {ticker.upper()}")
+            
+            # Fetch data and generate summary
+            graph_data = get_graph_data(ticker)
+            estimations, information = get_estimations(ticker), get_information(ticker)
+            combined_data = {**estimations, **information}
+            summary_table = generate_financial_summary(combined_data)
+            news = get_news(ticker)
+            
+            # Make the response
+            response = {
+                'graph': graph_data,
+                'summary_table': summary_table,
+                'news': news
+            }
+            
+            # Send the graph and summary back to the client
+            socket_connection.send(json.dumps(response).encode())
+            
+            print("Response sent to the client.")
         
         # Close the connection
         socket_connection.close()
         print("Connection closed.")
-        break
-    
+        
+        exit = input("Do you want to shut down the server? (y/n): ")
+        if exit.lower() == 'y':
+            break
+        
     # Close the server socket
     socket_server.close()
     print("Server shut down.")
