@@ -1,6 +1,10 @@
 # Necessary imports
 import requests
+<<<<<<< HEAD
 from datetime import date, timedelta, datetime
+=======
+from datetime import date, timedelta
+>>>>>>> ad0ab94241850d605caa07eb163b6f36cb632a93
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -15,16 +19,27 @@ from socket import *
 import json
 import re
 
+<<<<<<< HEAD
 def get_graph_data(ticker):
     """
     
         Obtains the data of the stock price evolution for a given ticker over the last year
+=======
+def get_quotes(ticker):
+    """
+    
+        Gets the stock price evolution for a given ticker over the last year
+>>>>>>> ad0ab94241850d605caa07eb163b6f36cb632a93
 
         Parameters:
             ticker (str): Stock ticker symbol
         
         Returns:
+<<<<<<< HEAD
             A dictionary containing the data for making the plot with Plotly {dates: [], prices: []}
+=======
+           Dictionary with the pairs {date: price} of the ticker given over the last year
+>>>>>>> ad0ab94241850d605caa07eb163b6f36cb632a93
     
     """
     
@@ -51,8 +66,9 @@ def get_graph_data(ticker):
         values = data['values']
         
         # Extract dates and prices
-        dates, prices = [], []
+        quotes = {}
         for day in values:
+<<<<<<< HEAD
             # Para que la fecha tenga el mismo formato que las news y poder plotear
             date_obj = datetime.strptime(day['datetime'], '%Y-%m-%d')
             dates.append(date_obj)
@@ -60,6 +76,13 @@ def get_graph_data(ticker):
         
         return {'ticker': ticker, 'dates': dates, 'prices': prices}
 
+=======
+            quotes[day['datetime']] = float(day['close'])
+
+        # Return the dict
+        return quotes
+    
+>>>>>>> ad0ab94241850d605caa07eb163b6f36cb632a93
     except requests.exceptions.RequestException as e:
         print(f"Error fetching data: {e}")
         return None
@@ -431,7 +454,7 @@ def main():
     """
     
     Main server function to receive the ticker symbol from the client,
-    fetch financial data, generate a summary (graphical and textual report), and send it back to the client.
+    fetch financial data, and send it back to the client.
     
     """
     
@@ -443,15 +466,21 @@ def main():
     socket_server.bind(('0.0.0.0', PORT))
     socket_server.listen()
     
-    print(f"Server is listening for connections at IP {IP_ADDRESS} and port {PORT}...")
+    print(f"Server is listening for connections at IP {IP_ADDRESS} and port {PORT} ...")
     
     # To be able to have multiple clients, this part should be in a loop:
     while True:
+<<<<<<< HEAD
         # Wait for client connection
         (socket_connection, address) = socket_server.accept()
+=======
+        # Receive data from the client
+        ticker = socket_connection.recv(4096).decode()
+>>>>>>> ad0ab94241850d605caa07eb163b6f36cb632a93
         
         print(f"Connection established with {address}")
         
+<<<<<<< HEAD
         # Main loop to handle client requests
         while True:
             # Receive data from the client
@@ -480,6 +509,28 @@ def main():
             # Send the graph and summary back to the client
             socket_connection.send(json.dumps(response, default=json_serial).encode())            
             print("Response sent to the client.")
+=======
+        # Fetch data and generate summary
+        quotes = get_quotes(ticker)
+        estimations, information = get_estimations(ticker), get_information(ticker)
+        combined_data = {**estimations, **information}
+        summary_table = generate_financial_summary(combined_data)
+        news = get_news(ticker)
+        
+        # Make the response
+        response = {
+            'quotes': quotes,
+            'summary_table': summary_table,
+            'news': news
+        }
+        
+        print("Data fetched and summary generated.")
+        
+        # Send the graph and summary back to the client
+        socket_connection.send(json.dumps(response).encode())
+        
+        print("Response sent to the client.")
+>>>>>>> ad0ab94241850d605caa07eb163b6f36cb632a93
         
         # Close the connection
         socket_connection.close()
