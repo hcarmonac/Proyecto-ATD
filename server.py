@@ -1,10 +1,6 @@
 # Necessary imports
 import requests
-<<<<<<< HEAD
 from datetime import date, timedelta, datetime
-=======
-from datetime import date, timedelta
->>>>>>> ad0ab94241850d605caa07eb163b6f36cb632a93
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -19,27 +15,16 @@ from socket import *
 import json
 import re
 
-<<<<<<< HEAD
 def get_graph_data(ticker):
     """
     
         Obtains the data of the stock price evolution for a given ticker over the last year
-=======
-def get_quotes(ticker):
-    """
-    
-        Gets the stock price evolution for a given ticker over the last year
->>>>>>> ad0ab94241850d605caa07eb163b6f36cb632a93
 
         Parameters:
             ticker (str): Stock ticker symbol
         
         Returns:
-<<<<<<< HEAD
             A dictionary containing the data for making the plot with Plotly {dates: [], prices: []}
-=======
-           Dictionary with the pairs {date: price} of the ticker given over the last year
->>>>>>> ad0ab94241850d605caa07eb163b6f36cb632a93
     
     """
     
@@ -63,12 +48,28 @@ def get_quotes(ticker):
         response = requests.get(URL, params=params, timeout=10)
         response.raise_for_status()
         data = response.json()
+        
+        # Check if the API returned an error
+        if 'status' in data and data['status'] == 'error':
+            print(f"API Error: {data.get('message', 'Unknown error')}")
+            return None
+        
+        # Check if 'values' key exists in the response
+        if 'values' not in data:
+            print(f"Error: 'values' key not found in API response.")
+            print(f"Response received: {data}")
+            return None
+        
         values = data['values']
         
+        # Check if values is empty
+        if not values:
+            print(f"No data available for ticker {ticker}")
+            return None
+        
         # Extract dates and prices
-        quotes = {}
+        dates, prices = [], []
         for day in values:
-<<<<<<< HEAD
             # Para que la fecha tenga el mismo formato que las news y poder plotear
             date_obj = datetime.strptime(day['datetime'], '%Y-%m-%d')
             dates.append(date_obj)
@@ -76,15 +77,14 @@ def get_quotes(ticker):
         
         return {'ticker': ticker, 'dates': dates, 'prices': prices}
 
-=======
-            quotes[day['datetime']] = float(day['close'])
-
-        # Return the dict
-        return quotes
-    
->>>>>>> ad0ab94241850d605caa07eb163b6f36cb632a93
     except requests.exceptions.RequestException as e:
         print(f"Error fetching data: {e}")
+        return None
+    except KeyError as e:
+        print(f"KeyError: Missing expected key in response - {e}")
+        return None
+    except Exception as e:
+        print(f"Unexpected error: {e}")
         return None
     
 def get_estimations(ticker):
@@ -454,7 +454,7 @@ def main():
     """
     
     Main server function to receive the ticker symbol from the client,
-    fetch financial data, and send it back to the client.
+    fetch financial data, generate a summary (graphical and textual report), and send it back to the client.
     
     """
     
@@ -466,71 +466,67 @@ def main():
     socket_server.bind(('0.0.0.0', PORT))
     socket_server.listen()
     
-    print(f"Server is listening for connections at IP {IP_ADDRESS} and port {PORT} ...")
+    print(f"Server is listening for connections at IP {IP_ADDRESS} and port {PORT}...")
     
     # To be able to have multiple clients, this part should be in a loop:
     while True:
-<<<<<<< HEAD
         # Wait for client connection
         (socket_connection, address) = socket_server.accept()
-=======
-        # Receive data from the client
-        ticker = socket_connection.recv(4096).decode()
->>>>>>> ad0ab94241850d605caa07eb163b6f36cb632a93
         
         print(f"Connection established with {address}")
         
-<<<<<<< HEAD
         # Main loop to handle client requests
         while True:
-            # Receive data from the client
-            ticker = socket_connection.recv(4096).decode().strip()
+            try:
+                # Receive data from the client
+                ticker = socket_connection.recv(4096).decode().strip()
+                
+                # Check if connection was closed
+                if not ticker:
+                    print("Client disconnected.")
+                    break
+                
+                if ticker == 'EXIT':
+                    print("Exit command received. Shutting down the server.")
+                    break
+                
+                print(f"Received ticker symbol: {ticker.upper()}")
+                
+                # Fetch data and generate summary
+                graph_data = get_graph_data(ticker)
+                
+                # Check if graph_data was successfully retrieved
+                if graph_data is None:
+                    error_response = {
+                        'error': 'Failed to retrieve stock data. Please check the ticker symbol or try again later.'
+                    }
+                    socket_connection.send(json.dumps(error_response).encode())
+                    print("Error response sent to client.")
+                    continue
+                
+                estimations, information = get_estimations(ticker), get_information(ticker)
+                combined_data = {**estimations, **information}
+                summary_table = generate_financial_summary(combined_data)
+                news = get_news(ticker)
+                
+                # Make the response
+                response = {
+                    'graph': graph_data,
+                    'summary_table': summary_table,
+                    'news': news
+                }
+                
+                # Send the graph and summary back to the client
+                socket_connection.send(json.dumps(response, default=json_serial).encode())            
+                print("Response sent to the client.")
             
-            if ticker == 'EXIT':
-                print("Exit command received. Shutting down the server.")
+            except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError) as e:
+                print(f"Connection error: {e}")
+                print("Client disconnected unexpectedly.")
                 break
-            
-            print(f"Received ticker symbol: {ticker.upper()}")
-            
-            # Fetch data and generate summary
-            graph_data = get_graph_data(ticker)
-            estimations, information = get_estimations(ticker), get_information(ticker)
-            combined_data = {**estimations, **information}
-            summary_table = generate_financial_summary(combined_data)
-            news = get_news(ticker)
-            
-            # Make the response
-            response = {
-                'graph': graph_data,
-                'summary_table': summary_table,
-                'news': news
-            }
-            
-            # Send the graph and summary back to the client
-            socket_connection.send(json.dumps(response, default=json_serial).encode())            
-            print("Response sent to the client.")
-=======
-        # Fetch data and generate summary
-        quotes = get_quotes(ticker)
-        estimations, information = get_estimations(ticker), get_information(ticker)
-        combined_data = {**estimations, **information}
-        summary_table = generate_financial_summary(combined_data)
-        news = get_news(ticker)
-        
-        # Make the response
-        response = {
-            'quotes': quotes,
-            'summary_table': summary_table,
-            'news': news
-        }
-        
-        print("Data fetched and summary generated.")
-        
-        # Send the graph and summary back to the client
-        socket_connection.send(json.dumps(response).encode())
-        
-        print("Response sent to the client.")
->>>>>>> ad0ab94241850d605caa07eb163b6f36cb632a93
+            except Exception as e:
+                print(f"Unexpected error in server loop: {e}")
+                break
         
         # Close the connection
         socket_connection.close()

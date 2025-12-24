@@ -1,10 +1,10 @@
+# Necessary imports
 from socket import *
 import json
 import yfinance as yf
 import plotly.graph_objects as go
-<<<<<<< HEAD
 import webbrowser
-import datetime as datetime
+from datetime import datetime
 
 def make_graph(graph_data, news):
     """
@@ -16,7 +16,10 @@ def make_graph(graph_data, news):
     Returns:
         str: The file path to the saved HTML graph.
     """
-    ticker, dates, prices = graph_data['ticker'], graph_data['dates'], graph_data['prices']
+    ticker, dates_raw, prices = graph_data['ticker'], graph_data['dates'], graph_data['prices']
+    
+    # Convert date strings to datetime objects
+    dates = [datetime.fromisoformat(d) if isinstance(d, str) else d for d in dates_raw]
     
     # 1. Plotea el gráfico de la evolución del stock
     fig = go.Figure()
@@ -33,9 +36,11 @@ def make_graph(graph_data, news):
     for new in news:
         # 2. Convertir la fecha de la noticia a datetime
         try:
-            date_new = datetime.fromisoformat(new[0])
+            # new[0] is already a string in ISO format
+            date_new = datetime.fromisoformat(new[0]) if isinstance(new[0], str) else new[0]
             title_new = new[1]
-        except (ValueError, TypeError):
+        except (ValueError, TypeError, AttributeError) as e:
+            print(f"Error processing news date: {e}")
             continue
 
         # Plotea solo las noticias que coinciden con dias en los que la bolsa está abierta
@@ -72,98 +77,6 @@ def make_graph(graph_data, news):
     fig.write_html(f"stock_price_graph.html")
 
     return "stock_price_graph.html"
-=======
-
-def visualize_data(data, ticker):
-    """
-    Displays the summary table and generates an interactive Plotly chart.
-    
-    Args:
-        data (dict): Dictionary containing 'quotes', 'news', and 'summary_table'.
-        ticker (str): The stock symbol for the title.
-    """
-    
-    # 1. Display summary table (Report)
-    print("\n" + "="*50)
-    print(f" INFORME FINANCIERO: {ticker}")
-    print("="*50)
-    
-    if 'summary_table' in data:
-        print(data['summary_table'])
-    else:
-        print("No hay tabla de resumen disponible.")
-        
-    print("\nGenerando gráfico interactivo ...")
-
-    # 2. Prepare quote data
-    quotes = data.get('quotes', {})
-    if not quotes:
-        print("No hay datos de cotización para graficar.")
-        return
-
-    dates = list(quotes.keys())
-    prices = list(quotes.values())
-
-    # 3. Prepare news data
-    news_list = data.get('news', [])
-    news_x = []
-    news_y = []
-    news_texts = []
-    
-    # Process news to place them on the chart
-    # Note: News will only be plotted if their date matches a quote date 
-    # to determine the Y-axis position (price).
-    for item in news_list:
-        if len(item) >= 2:
-            n_date = item[0]
-            n_title = item[1]
-            # n_link = item[2] # Optional: access link if needed
-            
-            # Check if there is a quote for this exact date
-            if n_date in quotes:
-                news_x.append(n_date)
-                news_y.append(quotes[n_date])
-                # HTML format for hover: Bold title (Spanish label)
-                news_texts.append(f"<b>Noticia:</b> {n_title}")
-
-    # 4. Create the figure
-    fig = go.Figure()
-
-    # Trace 1: Stock Price Line
-    fig.add_trace(go.Scatter(
-        x=dates,
-        y=prices,
-        mode='lines',
-        name='Cotización',
-        line=dict(color='royalblue', width=2),
-        hovertemplate='<b>Fecha:</b> %{x}<br><b>Precio:</b> $%{y:.2f}<extra></extra>'
-    ))
-
-    # Trace 2: News Markers
-    if news_x:
-        fig.add_trace(go.Scatter(
-            x=news_x,
-            y=news_y,
-            mode='markers',
-            name='Noticias Relevantes',
-            marker=dict(color='red', size=10, symbol='circle'),
-            text=news_texts, # The text containing the news title
-            hovertemplate='%{text}<br><b>Fecha:</b> %{x}<br><b>Precio:</b> $%{y:.2f}<extra></extra>'
-        ))
-
-    # Layout configuration (Spanish titles)
-    fig.update_layout(
-        title=f'Evolución Histórica y Noticias de {ticker}',
-        xaxis_title='Fecha',
-        yaxis_title='Precio de Cierre ($)',
-        hovermode="closest", # Highlights the point closest to the mouse
-        template="plotly_white",
-        legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01)
-    )
-
-    # Show graph
-    fig.show()
->>>>>>> ad0ab94241850d605caa07eb163b6f36cb632a93
 
 def main():
     """
@@ -202,57 +115,77 @@ def main():
             ticker = None
             # Loop for checking valid ticker
             while not ticker:
-                ticker = input("Enter the stock ticker symbol: ").upper().strip()
+                ticker = input("Enter the stock ticker symbol: ")
                 if not yf.Ticker(ticker).info:
                     print("Invalid ticker symbol. Please try again.")
                     ticker = None
             
-            # Send a request for data
-            client_socket.send(ticker.encode())
-            
-            print(f"Request sent for ticker: {ticker.upper()}")
-            
-            # Receive the response from the server
-            response = client_socket.recv(100000).decode()
-            
-            print("Received data from server\n\n\n")
-            
-            if response:
-                try:
-                    # Parse the JSON response
-                    data = json.loads(response)
+            try:
+                # Send a request for data
+                client_socket.send(ticker.encode())
                 
-                except json.JSONDecodeError:
-                    print("Error decoding JSON response from server.")
+                print(f"Request sent for ticker: {ticker.upper()}")
+                
+                # Receive the response from the server
+                response = client_socket.recv(100000).decode()
+                
+                print("Received data from server\n\n\n")
+                
+                if response:
+                    try:
+                        # Parse the JSON response
+                        data = json.loads(response)
+                    
+                    except json.JSONDecodeError:
+                        print("Error decoding JSON response from server.")
+                        continue
+                
+                else:
+                    print("No response received from server.")
                     continue
+                
+                # Check if there was an error in the response
+                if 'error' in data:
+                    print(f"\nError from server: {data['error']}\n")
+                    continue
+                
+                # Display the received data
+                graph_data, summary_table, news = data["graph"], data["summary_table"], data["news"]
+                
+                # Graph
+                graph = make_graph(graph_data, news)
+                
+                webbrowser.open(graph)
+                
+                # Summary table
+                print("Summary Table:\n")
+                print(summary_table)
+                
+                # News
+                print("\nNews:\n")
+                # Convert dates for comparison
+                dates_set = set(datetime.fromisoformat(d) if isinstance(d, str) else d for d in graph_data['dates'])
+                
+                for new in news:
+                    try:
+                        # Convert news date to datetime for comparison
+                        news_date = datetime.fromisoformat(new[0]) if isinstance(new[0], str) else new[0]
+                        
+                        # Check if the news date matches a trading day
+                        if news_date in dates_set:
+                            # Format date as YYYY-MM-DD only (without time)
+                            date_formatted = news_date.strftime('%Y-%m-%d') if hasattr(news_date, 'strftime') else str(news_date).split('T')[0]
+                            print(f"- Date: {date_formatted}\n  Title: {new[1]}\n  Link: {new[2]}\n")
+                    except (ValueError, TypeError, AttributeError):
+                        continue
             
-            else:
-                print("No response received from server.")
-                continue
-            
-            # Display the received data
-<<<<<<< HEAD
-            graph_data, summary_table, news = data["graph"], data["summary_table"], data["news"]
-            
-            # Graph
-            graph = make_graph(graph_data)
-            
-            webbrowser.open(graph)
-            
-            # Summary table
-            print("Summary Table:\n")
-            print(summary_table)
-            
-            # News
-            print("\nNews:\n")
-            for new in news:
-                # Comprueba que la noticia se publique en un dia que la bolsa estuviera abierta para poder plotear
-                if new in graph_data['dates']:
-                    print(f"- Date: {new[0]}\n  Title: {new[1]}\n  Link: {new[2]}\n")
-=======
-            if data:
-                visualize_data(data, ticker)
->>>>>>> ad0ab94241850d605caa07eb163b6f36cb632a93
+            except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError) as e:
+                print(f"\nConnection error: {e}")
+                print("Lost connection to server. Exiting...\n")
+                break
+            except Exception as e:
+                print(f"\nUnexpected error: {e}")
+                print("Please try again.\n")
         
         else:
             print("Invalid choice. Please try again.")
