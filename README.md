@@ -106,7 +106,7 @@ Implemented a full **TCP Socket** lifecycle:
 
 ## 👥 The Team
 
-- Hugo Carmona Casas
+- Hugo Carmona Casas ([LinkedIn](https://www.linkedin.com/in/hugo-carmona-3553093a0))
 
 - Lluc Climent Navarro ([LinkedIn](https://www.linkedin.com/in/lluc-climent-85116538a/))
 
