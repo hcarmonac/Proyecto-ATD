@@ -4,10 +4,10 @@ import json
 import yfinance as yf
 import plotly.graph_objects as go
 import webbrowser
+import datetime as datetime
 
-def make_graph(graph_data):
+def make_graph(graph_data, news):
     """
-    
     Create a Plotly graph for stock price evolution and save it as an image.
     
     Parameters:
@@ -16,26 +16,55 @@ def make_graph(graph_data):
     Returns:
         str: The file path to the saved HTML graph.
     """
-    
     ticker, dates, prices = graph_data['ticker'], graph_data['dates'], graph_data['prices']
     
+    # 1. Plotea el gráfico de la evolución del stock
     fig = go.Figure()
-    
+
     fig.add_trace(go.Scatter(
         x=dates, 
         y=prices, 
         mode='lines', 
         name=ticker.upper(),
-        line = dict(color='royalblue', width=2),
-        hovertemplate = '<b>Precio:</b> $%{y:.2f}<extra></extra>'
-        )
-    )
-    
+        line=dict(color='royalblue', width=2),
+        hovertemplate='<b>Precio:</b> $%{y:.2f}<extra></extra>'
+    ))
+
+    for new in news:
+        # 2. Convertir la fecha de la noticia a datetime
+        try:
+            date_new = datetime.fromisoformat(new[0])
+            title_new = new[1]
+        except (ValueError, TypeError):
+            continue
+
+        # Plotea solo las noticias que coinciden con dias en los que la bolsa está abierta
+        if date_new in dates:
+            # Plotea las noticias como lineas verticales infinitas
+            fig.add_vline(
+                x=date_new, 
+                line_width=1, 
+                line_dash="dash", 
+                line_color="grey"
+            )
+
+            fig.add_trace(go.Scatter(
+                x=[date_new],
+                y=[prices[dates.index(date_new)]],
+                mode='markers',
+                marker=dict(size=0, opacity=0),
+                name='Noticia',
+                text=[f"<b>Noticia:</b> {title_new}"],
+                hovertemplate='%{text}<extra></extra>',
+                showlegend=False
+            ))
+
     fig.update_layout(
         title = f'{ticker.upper()} Stock Price Evolution Over the Last Year',
         xaxis_title = 'Date',
         yaxis_title = 'Closing Price (USD)',
-        hovermode = 'x unified',
+        hovermode='x unified',
+        hoverdistance=5,
         template = 'plotly_white',
         hoverlabel = dict(bgcolor="white", font_size=13, font_family="Rockwell")
     )
@@ -123,8 +152,10 @@ def main():
             
             # News
             print("\nNews:\n")
-            for news_item in news:
-                print(f"- Date: {news_item[0]}\n  Title: {news_item[1]}\n  Link: {news_item[2]}\n")
+            for new in news:
+                # Comprueba que la noticia se publique en un dia que la bolsa estuviera abierta para poder plotear
+                if new in graph_data['dates']:
+                    print(f"- Date: {new[0]}\n  Title: {new[1]}\n  Link: {new[2]}\n")
         
         else:
             print("Invalid choice. Please try again.")

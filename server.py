@@ -1,7 +1,6 @@
 # Necessary imports
 import requests
-from datetime import date, timedelta
-import plotly.graph_objects as go
+from datetime import date, timedelta, datetime
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -54,7 +53,9 @@ def get_graph_data(ticker):
         # Extract dates and prices
         dates, prices = [], []
         for day in values:
-            dates.append(day['datetime'])
+            # Para que la fecha tenga el mismo formato que las news y poder plotear
+            date_obj = datetime.strptime(day['datetime'], '%Y-%m-%d')
+            dates.append(date_obj)
             prices.append(float(day['close']))
         
         return {'ticker': ticker, 'dates': dates, 'prices': prices}
@@ -352,8 +353,10 @@ def get_news(ticker):
                     elemento_a = i.find_element(By.TAG_NAME, 'a')
                     titulo = elemento_a.text
                     enlace = elemento_a.get_attribute('href')
-                    fecha = i.find_element(By.CLASS_NAME, 'fecha').text
-                    lista.append((fecha, titulo, enlace))
+                    # Cambia el formato con el de las fechas del gráfico para plotear
+                    fecha_sucia = i.find_element(By.CLASS_NAME, 'fecha').text
+                    fecha_object = datetime.strptime(fecha_sucia, '%d/%m/%Y')
+                    lista.append((fecha_object, titulo, enlace))
         except:
             print("Error filtering that the company name is in the title or subtitle and saving it")
             
@@ -418,6 +421,12 @@ def generate_financial_summary(raw_data):
     
     return tabulate(table_data, headers=headers, tablefmt='rounded_grid')
 
+def json_serial(obj):
+    """JSON serializer for objects not serializable by default json code"""
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat() # Convierte la fecha a string "YYYY-MM-DD"
+    raise TypeError ("Type %s not serializable" % type(obj))
+
 def main():
     """
     
@@ -469,8 +478,7 @@ def main():
             }
             
             # Send the graph and summary back to the client
-            socket_connection.send(json.dumps(response).encode())
-            
+            socket_connection.send(json.dumps(response, default=json_serial).encode())            
             print("Response sent to the client.")
         
         # Close the connection
