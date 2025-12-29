@@ -508,7 +508,52 @@ def main():
                 combined_data = {**estimations, **information}
                 summary_table = generate_financial_summary(combined_data)
                 news = get_news(ticker)
+                # --- INICIO BLOQUE NUEVO PARA LOVABLE ---
+                metrics_map = {
+                    'Price': 'Precio Actual',
+                    'Market Cap': 'Capitalización',
+                    'P/E': 'P/E Ratio',
+                    'ROE': 'ROE',
+                    'consensus': 'Recomendación Analistas',
+                    'Target Price': 'Precio Objetivo',
+                    'Profit Margin': 'Margen de Beneficio'
+                }
                 
+                metricas_limpias = {}
+                for key, label in metrics_map.items():
+                    # Extraemos el valor si existe en combined_data
+                    if key in combined_data:
+                        metricas_limpias[label] = combined_data[key]
+
+                # Convertimos las noticias (que son tuplas) a diccionarios
+                noticias_formateadas = []
+                for n in news:
+                    # n[0] es fecha (datetime), n[1] titulo, n[2] enlace
+                    fecha_str = n[0].isoformat() if hasattr(n[0], 'isoformat') else str(n[0])
+                    noticias_formateadas.append({
+                        "fecha": fecha_str,
+                        "titulo": n[1],
+                        "enlace": n[2]
+                    })
+
+                # Estructura final para el archivo
+                lovable_data = {
+                    "ticker": ticker.upper(),
+                    "metricas_fundamentales": metricas_limpias,
+                    "grafico": {
+                        "fechas": graph_data['dates'],  # Se serializarán con json_serial
+                        "precios": graph_data['prices']
+                    },
+                    "noticias": noticias_formateadas
+                }
+
+                # Guardamos el archivo data.json en la carpeta del servidor
+                with open('frontend/public/data.json', 'w', encoding='utf-8') as f:
+                    json.dump(lovable_data, f, default=json_serial, indent=4, ensure_ascii=False)
+                
+                print(f" Archivo 'data.json' generado correctamente para {ticker}")
+                # --- FIN BLOQUE NUEVO ---
+
                 # Make the response
                 response = {
                     'graph': graph_data,
