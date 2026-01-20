@@ -29,7 +29,7 @@ def make_graph(graph_data, news):
         y=prices, 
         mode='lines', 
         name=ticker.upper(),
-        line=dict(color='royalblue', width=2),
+        line=dict(color='#00167a', width=3),
         hovertemplate='<b>Precio:</b> $%{y:.2f}<extra></extra>'
     ))
 
@@ -50,7 +50,7 @@ def make_graph(graph_data, news):
                 x=date_new, 
                 line_width=1, 
                 line_dash="dash", 
-                line_color="grey"
+                line_color='grey'
             )
 
             fig.add_trace(go.Scatter(
@@ -194,16 +194,16 @@ def main():
                 </head>
                 <body>
                     <div class="container">
-                        <h1>  Financial report for {ticker.upper()}</h1>
+                        <h1> 💰​ Financial report for {ticker.upper()}</h1>
                         
-                        <h2>  Graph for the last year</h2>
+                        <h2> 📈​​ Graph for the last year</h2>
                         {graph_html}
                         
-                        <h2>  Ticker technical details</h2>
+                        <h2> 📋 Ticker technical details</h2>
                         {table_html}
                         
                         <div class="news-section">
-                            <h2>Related News</h2>
+                            <h2> 📰 Related News</h2>
                             {news_html}
                         </div>
                     </div>
