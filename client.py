@@ -194,16 +194,16 @@ def main():
                 </head>
                 <body>
                     <div class="container">
-                        <h1> 💰​ Financial report for {ticker.upper()}</h1>
+                        <h1>Financial report for {ticker.upper()}</h1>
                         
-                        <h2> 📈​​ Graph for the last year</h2>
+                        <h2>Graph for the last year</h2>
                         {graph_html}
                         
-                        <h2> 📋 Ticker technical details</h2>
+                        <h2>Ticker technical details</h2>
                         {table_html}
                         
                         <div class="news-section">
-                            <h2> 📰 Related News</h2>
+                            <h2>Related News</h2>
                             {news_html}
                         </div>
                     </div>
