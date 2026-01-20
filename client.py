@@ -74,9 +74,7 @@ def make_graph(graph_data, news):
         hoverlabel = dict(bgcolor="white", font_size=13, font_family="Rockwell")
     )
     
-    fig.write_html(f"stock_price_graph.html")
-
-    return "stock_price_graph.html"
+    return fig.to_html(full_html=False, include_plotlyjs='cdn')
 
 def main():
     """
@@ -150,35 +148,76 @@ def main():
                     continue
                 
                 # Display the received data
-                graph_data, summary_table, news = data["graph"], data["summary_table"], data["news"]
+                graph_data, table_html, news = data["graph"], data["summary_table"], data["news"]
                 
                 # Graph
-                graph = make_graph(graph_data, news)
+                graph_html = make_graph(graph_data, news)
                 
-                webbrowser.open(graph)
-                
-                # Summary table
-                print("Summary Table:\n")
-                print(summary_table)
-                
-                # News
-                print("\nNews:\n")
-                # Convert dates for comparison
-                dates_set = set(datetime.fromisoformat(d) if isinstance(d, str) else d for d in graph_data['dates'])
-                
+                # News HTML
+                news_html = ""
                 for new in news:
-                    try:
-                        # Convert news date to datetime for comparison
-                        news_date = datetime.fromisoformat(new[0]) if isinstance(new[0], str) else new[0]
+                    news_html += f"""
+                    <div class="news-item">
+                        <div class="news-date">{new[0]}</div>
+                        <div class="news-title">{new[1]}</div>
+                        <a class="news-link" href="{new[2]}" target="_blank">Read more</a>
+                    </div>
+                    """
+                if not news_html:
+                    news_html = "<p>No relevant news found for this stock.</p>"
+                
+                html_content = f"""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Reporte Financiero Completo</title>
+                    <style>
+                        body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 40px; background-color: #d9d9d9; color: #333; }}
+                        .container {{ max-width: 1000px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }}
                         
-                        # Check if the news date matches a trading day
-                        if news_date in dates_set:
-                            # Format date as YYYY-MM-DD only (without time)
-                            date_formatted = news_date.strftime('%Y-%m-%d') if hasattr(news_date, 'strftime') else str(news_date).split('T')[0]
-                            print(f"- Date: {date_formatted}\n  Title: {new[1]}\n  Link: {new[2]}\n")
-                    except (ValueError, TypeError, AttributeError):
-                        continue
-            
+                        /* Estilos para la Tabla */
+                        table {{ border-collapse: collapse; width: 100%; margin: 20px 0; font-size: 0.9em; }}
+                        th {{ background-color: #00167a; color: white; padding: 12px; text-align: left; }}
+                        td {{ padding: 10px; border-bottom: 1px solid #eee; }}
+                        tr:hover {{ background-color: #d9d9d9; }}
+
+                        /* Estilos para las Noticias */
+                        .news-section {{ margin-top: 40px; }}
+                        .news-item {{ padding: 15px; border-left: 4px solid #00167a; background: #d9d9d9; margin-bottom: 15px; border-radius: 0 8px 8px 0; }}
+                        .news-date {{ font-size: 0.85em; color: #666; font-weight: bold; }}
+                        .news-title {{ font-size: 1.1em; margin: 5px 0; font-weight: 600; }}
+                        .news-link {{ color: #00167a; text-decoration: none; font-size: 0.9em; }}
+                        .news-link:hover {{ text-decoration: underline; }}
+                        
+                        h2 {{ border-bottom: 2px solid #eee; padding-bottom: 10px; margin-top: 30px; }}
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <h1>  Financial report for {ticker.upper()}</h1>
+                        
+                        <h2>  Graph for the last year</h2>
+                        {graph_html}
+                        
+                        <h2>  Ticker technical details</h2>
+                        {table_html}
+                        
+                        <div class="news-section">
+                            <h2>Related News</h2>
+                            {news_html}
+                        </div>
+                    </div>
+                </body>
+                </html>
+                """
+
+                # Guardar y abrir (igual que antes)
+                with open('financial_report.html', 'w', encoding='utf-8') as f:
+                    f.write(html_content)
+                
+                
+                webbrowser.open('financial_report.html')
+                
             except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError) as e:
                 print(f"\nConnection error: {e}")
                 print("Lost connection to server. Exiting...\n")

@@ -442,7 +442,7 @@ def generate_financial_summary(raw_data):
     # Table generation with tabulate
     headers = ["Metric", "Value", "Economic Interpretation"]
     
-    return tabulate(table_data, headers=headers, tablefmt='rounded_grid')
+    return tabulate(table_data, headers, tablefmt='html')
 
 def json_serial(obj):
     """JSON serializer for objects not serializable by default json code"""
