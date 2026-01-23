@@ -1,6 +1,13 @@
+# Requires: python 3.11
 plotly
 requests
 selenium
 tabulate
 yfinance
 pandas
+datetime
+json
+webbrowser
+socket
+time
+re
